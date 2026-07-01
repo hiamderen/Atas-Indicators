@@ -10,7 +10,6 @@ namespace Atas_Indicators.Modules
     //  LineStyle — shared style enum for all indicators in this project
     // ═══════════════════════════════════════════════════════════════════════════
     public enum LineStyle { Solid, Dotted, Dashed }
-    public enum HistogramAlign { LeftToRight, RightToLeft }
 
     // ═══════════════════════════════════════════════════════════════════════════
     //  DrawHelper — VIEW primitives (static, reusable across all indicators)
@@ -112,83 +111,6 @@ namespace Atas_Indicators.Modules
                 var pen = style.MakePen();
                 HLine(ctx, chart, font, inner, pen, style.Color, x1, x2, labelInner);
                 HLine(ctx, chart, font, outer, pen, style.Color, x1, x2, labelOuter);
-            }
-        }
-
-        // ── Volume Profile: POC + Value Area fill + VAH/VAL lines ────────────
-
-        // xStart: where lines/fill begin (session open x0)
-        // labelX: right boundary — lines stop just before label, fill spans to here
-        public static void Vpo(
-            RenderContext ctx,
-            IChart        chart,
-            RenderFont    font,
-            VolumeProfile vpo,
-            LineSettings  pocStyle,
-            LineSettings  vaStyle,
-            Color         fillColor,
-            Color         labelColor,
-            int           xStart,
-            int           labelX)
-        {
-            if (!vpo.IsReady) return;
-
-            int labelW  = (int)Math.Max(
-                ctx.MeasureString("VAH",  font).Width,
-                ctx.MeasureString("vPOC", font).Width);
-            int halfH   = (int)(font.Size * 0.7f);  // centers text vertically on line
-            int lx      = labelX - labelW;
-            int lineEnd = lx - 4;
-
-            FillZone(ctx, chart, vpo.VAH, vpo.VAL, fillColor, xStart, labelX);
-            HLine(ctx, chart, font, vpo.VAH, vaStyle.MakePen(),  vaStyle.Color,  xStart, lineEnd);
-            HLine(ctx, chart, font, vpo.VAL, vaStyle.MakePen(),  vaStyle.Color,  xStart, lineEnd);
-            HLine(ctx, chart, font, vpo.POC, pocStyle.MakePen(), pocStyle.Color, xStart, lineEnd);
-
-            ctx.DrawString("VAH",  font, vaStyle.Color,  lx, chart.GetYByPrice(vpo.VAH) - halfH);
-            ctx.DrawString("vPOC", font, pocStyle.Color, lx, chart.GetYByPrice(vpo.POC) - halfH);
-            ctx.DrawString("VAL",  font, vaStyle.Color,  lx, chart.GetYByPrice(vpo.VAL) - halfH);
-        }
-
-        // ── Volume Profile Histogram ──────────────────────────────────────────
-        // Draws horizontal bars inside the session period (xLeft → xLeft + barWidth).
-        // Max bar width fills the full session width (xRight - xLeft).
-
-        public static void VolumeHistogram(
-            RenderContext ctx,
-            IChart chart,
-            VolumeProfile vpo,
-            Color barColor,
-            Color vaColor,
-            Color pocColor,
-            int xLeft,
-            int xRight,
-            int widthPct = 80,
-            HistogramAlign align = HistogramAlign.RightToLeft)
-        {
-            if (!vpo.IsReady || vpo.Distribution == null || vpo.MaxVolume <= 0) return;
-
-            int maxWidth = Math.Max(1, (int)((xRight - xLeft) * widthPct / 100.0));
-
-            foreach (var (price, vol) in vpo.Distribution)
-            {
-                int yTop = chart.GetYByPrice(price + vpo.TickSize);
-                int yBot = chart.GetYByPrice(price);
-                if (yTop > yBot) (yTop, yBot) = (yBot, yTop);
-                int h = Math.Max(1, yBot - yTop);
-
-                int barW = (int)(vol / vpo.MaxVolume * maxWidth);
-                if (barW <= 0) continue;
-
-                Color c = (price == vpo.POC) ? pocColor
-                    : (price >= vpo.VAL && price <= vpo.VAH) ? vaColor
-                    : barColor;
-
-                int barX = align == HistogramAlign.RightToLeft
-                    ? xRight - barW   // bars grow left from session close
-                    : xLeft;          // bars grow right from session open
-
-                ctx.FillRectangle(c, new Rectangle(barX, yTop, barW, h));
             }
         }
 

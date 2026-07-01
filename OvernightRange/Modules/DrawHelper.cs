@@ -114,65 +114,6 @@ namespace Atas_Indicators.Modules
             }
         }
 
-        // ── Volume Profile: POC + Value Area fill + VAH/VAL lines ────────────
-
-        public static void Vpo(
-            RenderContext ctx,
-            IChart        chart,
-            RenderFont    font,
-            VolumeProfile vpo,
-            LineSettings  pocStyle,
-            LineSettings  vaStyle,
-            Color         fillColor,
-            int           x1,
-            int           x2)
-        {
-            if (!vpo.IsReady) return;
-            FillZone(ctx, chart, vpo.VAH, vpo.VAL, fillColor, x1, x2);
-            HLine(ctx, chart, font, vpo.VAH, vaStyle.MakePen(),  vaStyle.Color,  x1, x2, "VAH");
-            HLine(ctx, chart, font, vpo.VAL, vaStyle.MakePen(),  vaStyle.Color,  x1, x2, "VAL");
-            HLine(ctx, chart, font, vpo.POC, pocStyle.MakePen(), pocStyle.Color, x1, x2, "POC");
-        }
-
-        // ── Volume Profile Histogram ──────────────────────────────────────────
-        // Draws horizontal bars inside the session period (xLeft → xLeft + barWidth).
-        // Max bar width fills the full session width (xRight - xLeft).
-
-        public static void VolumeHistogram(
-            RenderContext ctx,
-            IChart        chart,
-            VolumeProfile vpo,
-            Color         barColor,     // bars outside value area
-            Color         vaColor,      // bars inside value area
-            Color         pocColor,     // POC bar
-            int           xLeft,        // session start bar x-position
-            int           xRight)       // session end bar x-position
-        {
-            if (!vpo.IsReady || vpo.Distribution == null || vpo.MaxVolume <= 0) return;
-
-            int maxWidth = Math.Max(1, xRight - xLeft);
-
-            foreach (var (price, vol) in vpo.Distribution)
-            {
-                // Pixel row for this price tick
-                int yTop = chart.GetYByPrice(price + vpo.TickSize);
-                int yBot = chart.GetYByPrice(price);
-                if (yTop > yBot) (yTop, yBot) = (yBot, yTop);
-                int h = Math.Max(1, yBot - yTop);
-
-                int barW = (int)(vol / vpo.MaxVolume * maxWidth);
-                if (barW <= 0) continue;
-
-                Color c = (price == vpo.POC)
-                    ? pocColor
-                    : (price >= vpo.VAL && price <= vpo.VAH)
-                        ? vaColor
-                        : barColor;
-
-                ctx.FillRectangle(c, new Rectangle(xLeft, yTop, barW, h));
-            }
-        }
-
         // ── RenderPen factory ─────────────────────────────────────────────────
 
         /// <summary>Create a <see cref="RenderPen"/> with the given color, width,

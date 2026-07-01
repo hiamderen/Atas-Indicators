@@ -17,9 +17,6 @@ namespace Atas_Indicators.Modules
         public decimal High     { get; private set; }
         public decimal Low      { get; private set; }
 
-        // Volume Profile — populated after Lock() via SetVPO()
-        public VolumeProfile VPO { get; private set; }
-
         // ── Derived (set once by Lock) ────────────────────────────────────────
         public decimal Range { get; private set; }
 
@@ -82,8 +79,6 @@ namespace Atas_Indicators.Modules
             Low      = low;
             EstDate  = estDate;
         }
-
-        public void SetVPO(VolumeProfile vpo) => VPO = vpo;
 
         // Called each bar after session close to detect the first sweep of High or Low
         internal void TrySweep(int bar, decimal high, decimal low)

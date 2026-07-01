@@ -13,13 +13,13 @@ namespace Atas_Indicators
     public class Range69 : Indicator
     {
         // Session 6:00–8:59 EST  (EndBar = last bar with time < 9:00, tracked via _lastInBar)
-        private static readonly TimeSpan SessionOpen  = new(6, 0, 0);
+        private static readonly TimeSpan SessionOpen = new(6, 0, 0);
         private static readonly TimeSpan SessionClose = new(9, 0, 0);
 
         private readonly SessionTracker _tracker = new(SessionOpen, SessionClose);
         private RenderFont? _font;
         private string _fontFamily = "Arial";
-        private int    _fontSize   = 7;
+        private int _fontSize = 7;
 
         // ═══════════════════════════════════════════════════════════════════════
         //  GROUP: General
@@ -114,36 +114,6 @@ namespace Atas_Indicators
         public FibBandSettings Fib233 { get; set; } = new(Color.FromArgb(57, 107, 167));
 
         // ═══════════════════════════════════════════════════════════════════════
-        //  GROUP: Volume Profile
-        // ═══════════════════════════════════════════════════════════════════════
-        [Display(Name = "Show Histogram", GroupName = "Volume Profile", Order = 110)]
-        public bool ShowHistogram { get; set; } = true;
-        [Display(Name = "Direction", GroupName = "Volume Profile", Order = 111)]
-        public HistogramAlign HistAlign { get; set; } = HistogramAlign.LeftToRight;
-        [Display(Name = "Max Width %", GroupName = "Volume Profile", Order = 112)]
-        [Range(1, 100)]
-        public int HistWidthPct { get; set; } = 60;
-        [Display(Name = "Outside VA Color", GroupName = "Volume Profile", Order = 113)]
-        public Color HistBarColor { get; set; } = Color.FromArgb(90, 89, 89, 89);
-        [Display(Name = "Value Area Color", GroupName = "Volume Profile", Order = 114)]
-        public Color HistVAColor { get; set; } = Color.FromArgb(150, 57, 107, 167);
-        [Display(Name = "POC Bar Color", GroupName = "Volume Profile", Order = 115)]
-        public Color HistPOCColor { get; set; } = Color.FromArgb(230, 255, 200, 50);
-
-        [Display(Name = "Value Area %", GroupName = "Volume Profile", Order = 116)]
-        [Range(1, 100)]
-        public int ValueAreaPct { get; set; } = 70;
-
-        [Display(Name = "Show vPOC / VAH / VAL", GroupName = "Volume Profile", Order = 120)]
-        public bool ShowVPOLines { get; set; } = true;
-        [Display(Name = "vPOC Style", GroupName = "Volume Profile", Order = 121)]
-        public LineSettings VpoPOC { get; set; } = new(Color.FromArgb(200, 140, 0), 2);
-        [Display(Name = "VA Style", GroupName = "Volume Profile", Order = 122)]
-        public LineSettings VpoVA { get; set; } = new(Color.FromArgb(57, 107, 167), 2);
-        [Display(Name = "VA Fill Color", GroupName = "Volume Profile", Order = 123)]
-        public Color VpoFill { get; set; } = Color.Transparent;
-
-        // ═══════════════════════════════════════════════════════════════════════
         //  CONSTRUCTOR
         // ═══════════════════════════════════════════════════════════════════════
         public Range69() : base(true)
@@ -165,18 +135,7 @@ namespace Atas_Indicators
                 : new TimeSpan(16, 15, 0); // market close — freezes DayEndBar at 16:14
 
             var c = GetCandle(bar);
-            if (_tracker.Process(bar, c.Time, c.Open, c.High, c.Low) && _tracker.Last != null)
-                ComputeVPO(_tracker.Last);
-        }
-
-        private void ComputeVPO(SessionSnapshot s)
-        {
-            var bars = Enumerable
-                .Range(s.StartBar, s.EndBar - s.StartBar + 1)
-                .Select(b => { var cb = GetCandle(b); return (cb.High, cb.Low, cb.Volume); });
-
-            if (InstrumentInfo == null) return;
-            s.SetVPO(VpoCalculator.CalculateFromBars(bars, InstrumentInfo.TickSize, ValueAreaPct / 100m));
+            _tracker.Process(bar, c.Time, c.Open, c.High, c.Low);
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -191,17 +150,11 @@ namespace Atas_Indicators
 
             _font ??= new RenderFont(FontFamily, FontSize);
 
-            // x0 = session start (6:00), x1 = session end (8:59), x2 = draw end
-            int x0 = ChartInfo.GetXByBar(s.StartBar);
-            int x1 = ChartInfo.GetXByBar(s.EndBar);
+            // x1 = first bar after session (9:00), x2 = draw end
+            int x1 = ChartInfo.GetXByBar(s.EndBar + 1);
             int x2 = ComputeX2(ctx, s);
 
             if (x1 > ctx.ClipBounds.Right || x2 < ctx.ClipBounds.Left) return;
-
-            // Histogram inside session (x0 → x1)
-            if (ShowHistogram && s.VPO.IsReady)
-                DrawHelper.VolumeHistogram(ctx, ChartInfo, s.VPO,
-                    HistBarColor, HistVAColor, HistPOCColor, x0, x1, HistWidthPct, HistAlign);
 
             // Vertical boundary at session close
             DrawHelper.VLine(ctx, ChartInfo,
@@ -212,9 +165,6 @@ namespace Atas_Indicators
             PaintStdDev(ctx, s, x1, x2);
             PaintExtFib(ctx, s, x1, x2);
 
-            // vPOC / VAH / VAL inside session x0 → x1
-            if (ShowVPOLines)
-                DrawHelper.Vpo(ctx, ChartInfo, _font!, s.VPO, VpoPOC, VpoVA, VpoFill, LabelColor, x0, x1);
         }
 
         private int ComputeX2(RenderContext ctx, SessionSnapshot s)

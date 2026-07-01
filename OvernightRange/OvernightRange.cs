@@ -40,19 +40,6 @@ namespace Atas_Indicators
         [Display(Name = "Style", GroupName = "High / Low",    Order = 11)]
         public LineSettings HighLow { get; set; } = new(Color.DarkOrange, 2);
 
-        // ── Volume Profile ────────────────────────────────────────────────────
-        [Display(Name = "Show",       GroupName = "Volume Profile", Order = 20)]
-        public bool ShowVPO { get; set; } = true;
-
-        [Display(Name = "POC Style",  GroupName = "Volume Profile", Order = 21)]
-        public LineSettings VpoPOC { get; set; } = new(Color.Gold, 2);
-
-        [Display(Name = "VA Style",   GroupName = "Volume Profile", Order = 22)]
-        public LineSettings VpoVA { get; set; } = new(Color.Gold, 1, LineStyle.Dotted);
-
-        [Display(Name = "Fill Color", GroupName = "Volume Profile", Order = 23)]
-        public Color VpoFill { get; set; } = Color.FromArgb(30, 255, 215, 0);
-
         // ═══════════════════════════════════════════════════════════════════════
         //  CONSTRUCTOR
         // ═══════════════════════════════════════════════════════════════════════
@@ -77,17 +64,7 @@ namespace Atas_Indicators
                 : new TimeSpan(23, 59, 59);
 
             var c = GetCandle(bar);
-            if (_tracker.Process(bar, c.Time, c.Open, c.High, c.Low) && _tracker.Last != null)
-                ComputeVPO(_tracker.Last);
-        }
-
-        private void ComputeVPO(SessionSnapshot s)
-        {
-            var bars = Enumerable
-                .Range(s.StartBar, s.EndBar - s.StartBar + 1)
-                .Select(b => { var cb = GetCandle(b); return (cb.High, cb.Low, cb.Volume); });
-
-            s.SetVPO(VpoCalculator.Calculate(bars, TickSize));
+            _tracker.Process(bar, c.Time, c.Open, c.High, c.Low);
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -119,8 +96,6 @@ namespace Atas_Indicators
                     ChartInfo.GetXByBar(s.LowBar),  x2, "ONL");
             }
 
-            if (ShowVPO)
-                DrawHelper.Vpo(ctx, ChartInfo, _font!, s.VPO, VpoPOC, VpoVA, VpoFill, x1, x2);
         }
 
         private int ComputeX2(RenderContext ctx, SessionSnapshot s)
