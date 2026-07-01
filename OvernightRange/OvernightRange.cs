@@ -80,10 +80,11 @@ namespace Atas_Indicators
 
             _font ??= new RenderFont("Arial", 8);
 
-            int x1 = ChartInfo.GetXByBar(s.EndBar);
-            int x2 = ComputeX2(ctx, s);
+            int x1     = ChartInfo.GetXByBar(s.EndBar);
+            int xHigh2 = ComputeX2(ctx, s, s.HighSweepBar);
+            int xLow2  = ComputeX2(ctx, s, s.LowSweepBar);
 
-            if (x1 > ctx.ClipBounds.Right || x2 < ctx.ClipBounds.Left) return;
+            if (x1 > ctx.ClipBounds.Right || Math.Max(xHigh2, xLow2) < ctx.ClipBounds.Left) return;
 
             PaintBoundary(ctx, s, x1);
 
@@ -91,25 +92,33 @@ namespace Atas_Indicators
             {
                 var pen = HighLow.MakePen();
                 DrawHelper.HLine(ctx, ChartInfo, _font!, s.High, pen, HighLow.Color,
-                    ChartInfo.GetXByBar(s.HighBar), x2, "ONH");
+                    ChartInfo.GetXByBar(s.HighBar), xHigh2, "ONH", labelAbove: true);
                 DrawHelper.HLine(ctx, ChartInfo, _font!, s.Low,  pen, HighLow.Color,
-                    ChartInfo.GetXByBar(s.LowBar),  x2, "ONL");
+                    ChartInfo.GetXByBar(s.LowBar),  xLow2,  "ONL", labelAbove: false);
             }
 
         }
 
-        private int ComputeX2(RenderContext ctx, SessionSnapshot s)
+        // Computes the right edge for one side (High or Low) of the range.
+        // Regardless of Extension mode, once that side has been swept the line
+        // freezes at the sweep bar instead of continuing to extend — the other
+        // side (if unswept) keeps extending independently.
+        private int ComputeX2(RenderContext ctx, SessionSnapshot s, int sweepBar)
         {
             int xRight = Extension switch
             {
                 ExtendMode.ToAxis  => ctx.ClipBounds.Right,
-                ExtendMode.ToSweep => s.SweepBar >= 0
-                    ? ChartInfo.GetXByBar(s.SweepBar)
+                ExtendMode.ToSweep => sweepBar >= 0
+                    ? ChartInfo.GetXByBar(sweepBar)
                     : ChartInfo.GetXByBar(CurrentBar),
                 _ => s.DayEndBar >= 0
                     ? ChartInfo.GetXByBar(s.DayEndBar)
                     : ChartInfo.GetXByBar(CurrentBar),
             };
+
+            if (Extension != ExtendMode.ToSweep && sweepBar >= 0)
+                xRight = Math.Min(xRight, ChartInfo.GetXByBar(sweepBar));
+
             return Math.Min(xRight, ctx.ClipBounds.Right);
         }
 

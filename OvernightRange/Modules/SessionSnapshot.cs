@@ -62,8 +62,10 @@ namespace Atas_Indicators.Modules
         public DateTime EstDate      { get; private set; }
         public DateTime CloseEstDate { get; private set; }
 
-        // First bar after session close where price sweeps (crosses) High or Low (-1 = not yet swept)
-        public int SweepBar { get; private set; } = -1;
+        // First bar after session close where price sweeps (crosses) High / Low, tracked independently
+        // (-1 = not yet swept on that side)
+        public int HighSweepBar { get; private set; } = -1;
+        public int LowSweepBar  { get; private set; } = -1;
 
         // True once Lock() has been called and Range > 0
         public bool IsReady => EndBar >= 0 && Range > 0;
@@ -80,11 +82,12 @@ namespace Atas_Indicators.Modules
             EstDate  = estDate;
         }
 
-        // Called each bar after session close to detect the first sweep of High or Low
+        // Called each bar after session close to detect the first sweep of High and Low, independently
         internal void TrySweep(int bar, decimal high, decimal low)
         {
-            if (SweepBar >= 0 || !IsReady) return;
-            if (high >= High || low <= Low) SweepBar = bar;
+            if (!IsReady) return;
+            if (HighSweepBar < 0 && high >= High) HighSweepBar = bar;
+            if (LowSweepBar  < 0 && low  <= Low)  LowSweepBar  = bar;
         }
 
         // Called by SessionTracker when the RTH close bar is found
